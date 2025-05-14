@@ -6,6 +6,8 @@ import { initCalendar, showBookingModal, showRoomsModal, showLocationsModal } fr
 const addBookingBtn = document.getElementById('addBookingBtn');
 const manageRoomsBtn = document.getElementById('manageRoomsBtn');
 const manageLocationsBtn = document.getElementById('manageLocationsBtn');
+const adminLoginToggle = document.getElementById('adminLoginToggle');
+const authSection = document.getElementById('authSection');
 
 // When DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
@@ -21,6 +23,17 @@ document.addEventListener('DOMContentLoaded', function() {
     addBookingBtn.addEventListener('click', showBookingModal);
     manageRoomsBtn.addEventListener('click', showRoomsModal);
     manageLocationsBtn.addEventListener('click', showLocationsModal);
+    
+    // Toggle admin login section
+    adminLoginToggle.addEventListener('click', () => {
+        if (authSection.style.display === 'none') {
+            authSection.style.display = 'block';
+            adminLoginToggle.textContent = 'Hide Admin Login';
+        } else {
+            authSection.style.display = 'none';
+            adminLoginToggle.textContent = 'Admin Login';
+        }
+    });
     
     // Close modals when clicking outside
     window.addEventListener('click', (event) => {

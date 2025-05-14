@@ -11,10 +11,23 @@
     <div class="container">
         <header>
             <h1>1M House</h1>
-            <p>Members Club Calendar - Granada, Spain</p>
+            <div class="location-selector">
+                <p>Members Club Calendar - </p>
+                <div class="dropdown">
+                    <button class="dropdown-btn" id="locationDropdown">Granada, Spain</button>
+                    <div class="dropdown-content">
+                        <a href="#" class="active" data-value="granada">Granada, Spain</a>
+                        <a href="#" class="disabled" data-value="house2">House 2 (Coming Soon...)</a>
+                    </div>
+                </div>
+            </div>
         </header>
 
-        <div class="auth-section" id="authSection">
+        <div class="auth-toggle">
+            <button id="adminLoginToggle">Admin Login</button>
+        </div>
+
+        <div class="auth-section" id="authSection" style="display:none;">
             <div class="login-form" id="loginForm">
                 <h2>Admin Access</h2>
                 <input type="email" id="email" placeholder="Email">
@@ -31,7 +44,6 @@
 
         <div class="controls" id="adminControls" style="display:none;">
             <div class="control-panel">
-                <h3>Booking Controls</h3>
                 <button id="addBookingBtn">Add Booking</button>
                 <button id="manageRoomsBtn">Manage Rooms</button>
                 <button id="manageLocationsBtn">Manage Locations</button>

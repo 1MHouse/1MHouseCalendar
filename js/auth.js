@@ -16,6 +16,7 @@ const logoutBtn = document.getElementById('logoutBtn');
 const authMessage = document.getElementById('authMessage');
 const email = document.getElementById('email');
 const password = document.getElementById('password');
+const adminLoginToggle = document.getElementById('adminLoginToggle');
 
 // Initialize authentication state listener
 export function initAuth() {
@@ -28,12 +29,18 @@ export function initAuth() {
             adminControls.style.display = 'block';
             userEmail.textContent = user.email;
             console.log('User logged in:', user.email);
+            
+            // Update admin login toggle button
+            adminLoginToggle.textContent = 'Admin Panel';
         } else {
             // User is signed out
             loginForm.style.display = 'block';
             userPanel.style.display = 'none';
             adminControls.style.display = 'none';
             console.log('User logged out');
+            
+            // Update admin login toggle button
+            adminLoginToggle.textContent = 'Admin Login';
         }
     });
 
