@@ -3,133 +3,297 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>1M House - Members Calendar</title>
+    <title>1M House - Exclusive Members Club</title>
     <link rel="stylesheet" href="css/styles.css">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/5.11.3/main.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/calendar.css">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>1M House</h1>
-            <div class="location-selector">
-                <p>Members Club Calendar - </p>
-                <div class="dropdown">
-                    <button class="dropdown-btn" id="locationDropdown">Granada, Spain</button>
-                    <div class="dropdown-content">
-                        <a href="#" class="active" data-value="granada">Granada, Spain</a>
-                        <a href="#" class="disabled" data-value="house2">House 2 (Coming Soon...)</a>
+    <header>
+        <div class="container">
+            <div class="logo">
+                <h1>1M House</h1>
+                <p>Granada, Spain</p>
+            </div>
+            <nav>
+                <ul>
+                    <li><a href="#" class="active">Availability</a></li>
+                    <li><a href="#">About</a></li>
+                    <li><a href="#">Membership</a></li>
+                    <li><a href="#">Contact</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="container">
+                <h2>Check Room Availability</h2>
+                <p>Our exclusive Granada property features 5 luxurious bedrooms available to members.</p>
+            </div>
+        </section>
+
+        <section class="calendar-section">
+            <div class="container">
+                <div class="calendar-navigation">
+                    <button id="prev-month" class="nav-btn"><i class="fas fa-chevron-left"></i> Previous</button>
+                    <h3 id="current-month">May 2025</h3>
+                    <button id="next-month" class="nav-btn">Next <i class="fas fa-chevron-right"></i></button>
+                </div>
+                
+                <div class="calendar-container">
+                    <div class="calendar-header">
+                        <!-- Days will be inserted here by JavaScript -->
+                    </div>
+                    <div class="calendar-body">
+                        <!-- Rooms and availability will be inserted here by JavaScript -->
+                    </div>
+                </div>
+
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="legend-color available"></div>
+                        <span>Available</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color booked"></div>
+                        <span>Booked</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color maintenance"></div>
+                        <span>Maintenance</span>
                     </div>
                 </div>
             </div>
-        </header>
+        </section>
 
-        <div class="auth-toggle">
-            <button id="adminLoginToggle">Admin Login</button>
-        </div>
+        <section class="admin-section">
+            <div class="container">
+                <div class="admin-login" id="admin-login-form">
+                    <h3>Admin Login</h3>
+                    <form id="login-form">
+                        <div class="form-group">
+                            <label for="email">Email</label>
+                            <input type="email" id="email" placeholder="Enter admin email" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="password">Password</label>
+                            <input type="password" id="password" placeholder="Enter password" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Login</button>
+                    </form>
+                </div>
 
-        <div class="auth-section" id="authSection" style="display:none;">
-            <div class="login-form" id="loginForm">
-                <h2>Admin Access</h2>
-                <input type="email" id="email" placeholder="Email">
-                <input type="password" id="password" placeholder="Passcode">
-                <button id="loginBtn">Login</button>
-                <p id="authMessage"></p>
+                <div class="admin-panel" id="admin-panel" style="display: none;">
+                    <h3>Admin Panel</h3>
+                    
+                    <div class="admin-tabs">
+                        <button class="tab-btn active" data-tab="bookings">Manage Bookings</button>
+                        <button class="tab-btn" data-tab="rooms">Manage Rooms</button>
+                        <button class="tab-btn" data-tab="locations">Manage Locations</button>
+                        <button id="logout-btn" class="btn btn-secondary">Logout</button>
+                    </div>
+                    
+                    <div class="tab-content" id="bookings-tab">
+                        <h4>Manage Bookings</h4>
+                        <button id="add-booking-btn" class="btn btn-primary">Add New Booking</button>
+                        
+                        <div id="booking-form" class="form-container" style="display: none;">
+                            <h5>Add/Edit Booking</h5>
+                            <form id="booking-form-element">
+                                <input type="hidden" id="booking-id">
+                                <div class="form-group">
+                                    <label for="room-select">Room</label>
+                                    <select id="room-select" required>
+                                        <!-- Rooms will be populated by JavaScript -->
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="start-date">Start Date</label>
+                                    <input type="date" id="start-date" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="end-date">End Date</label>
+                                    <input type="date" id="end-date" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="status">Status</label>
+                                    <select id="status" required>
+                                        <option value="booked">Booked</option>
+                                        <option value="maintenance">Maintenance</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="guest-name">Guest Name</label>
+                                    <input type="text" id="guest-name">
+                                </div>
+                                <div class="form-group">
+                                    <label for="guest-email">Guest Email</label>
+                                    <input type="email" id="guest-email">
+                                </div>
+                                <div class="form-buttons">
+                                    <button type="submit" class="btn btn-primary">Save</button>
+                                    <button type="button" id="cancel-booking-btn" class="btn btn-secondary">Cancel</button>
+                                </div>
+                            </form>
+                        </div>
+                        
+                        <div class="bookings-list">
+                            <table id="bookings-table">
+                                <thead>
+                                    <tr>
+                                        <th>Room</th>
+                                        <th>Start Date</th>
+                                        <th>End Date</th>
+                                        <th>Status</th>
+                                        <th>Guest</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Bookings will be populated by JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div class="tab-content" id="rooms-tab" style="display: none;">
+                        <h4>Manage Rooms</h4>
+                        <button id="add-room-btn" class="btn btn-primary">Add New Room</button>
+                        
+                        <div id="room-form" class="form-container" style="display: none;">
+                            <h5>Add/Edit Room</h5>
+                            <form id="room-form-element">
+                                <input type="hidden" id="room-id">
+                                <div class="form-group">
+                                    <label for="room-name">Room Name</label>
+                                    <input type="text" id="room-name" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="room-location">Location</label>
+                                    <select id="room-location" required>
+                                        <!-- Locations will be populated by JavaScript -->
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="room-capacity">Capacity</label>
+                                    <input type="number" id="room-capacity" min="1" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="room-description">Description</label>
+                                    <textarea id="room-description"></textarea>
+                                </div>
+                                <div class="form-buttons">
+                                    <button type="submit" class="btn btn-primary">Save</button>
+                                    <button type="button" id="cancel-room-btn" class="btn btn-secondary">Cancel</button>
+                                </div>
+                            </form>
+                        </div>
+                        
+                        <div class="rooms-list">
+                            <table id="rooms-table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Location</th>
+                                        <th>Capacity</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Rooms will be populated by JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div class="tab-content" id="locations-tab" style="display: none;">
+                        <h4>Manage Locations</h4>
+                        <button id="add-location-btn" class="btn btn-primary">Add New Location</button>
+                        
+                        <div id="location-form" class="form-container" style="display: none;">
+                            <h5>Add/Edit Location</h5>
+                            <form id="location-form-element">
+                                <input type="hidden" id="location-id">
+                                <div class="form-group">
+                                    <label for="location-name">Location Name</label>
+                                    <input type="text" id="location-name" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="location-address">Address</label>
+                                    <textarea id="location-address" required></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label for="location-city">City</label>
+                                    <input type="text" id="location-city" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="location-country">Country</label>
+                                    <input type="text" id="location-country" required>
+                                </div>
+                                <div class="form-buttons">
+                                    <button type="submit" class="btn btn-primary">Save</button>
+                                    <button type="button" id="cancel-location-btn" class="btn btn-secondary">Cancel</button>
+                                </div>
+                            </form>
+                        </div>
+                        
+                        <div class="locations-list">
+                            <table id="locations-table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>City</th>
+                                        <th>Country</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Locations will be populated by JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             </div>
-            
-            <div class="user-panel" id="userPanel" style="display:none;">
-                <p>Logged in as: <span id="userEmail"></span></p>
-                <button id="logoutBtn">Logout</button>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-logo">
+                    <h3>1M House</h3>
+                    <p>Exclusive Members Club</p>
+                </div>
+                <div class="footer-links">
+                    <h4>Quick Links</h4>
+                    <ul>
+                        <li><a href="#">Availability</a></li>
+                        <li><a href="#">About</a></li>
+                        <li><a href="#">Membership</a></li>
+                        <li><a href="#">Contact</a></li>
+                        <li><a href="#">Terms & Conditions</a></li>
+                        <li><a href="#">Privacy Policy</a></li>
+                    </ul>
+                </div>
+                <div class="footer-contact">
+                    <h4>Contact Us</h4>
+                    <p><i class="fas fa-map-marker-alt"></i> Granada, Spain</p>
+                    <p><i class="fas fa-envelope"></i> info@1mhouse.com</p>
+                    <p><i class="fas fa-phone"></i> +34 123 456 789</p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 1M House. All rights reserved.</p>
             </div>
         </div>
-
-        <div class="controls" id="adminControls" style="display:none;">
-            <div class="control-panel">
-                <button id="addBookingBtn">Add Booking</button>
-                <button id="manageRoomsBtn">Manage Rooms</button>
-                <button id="manageLocationsBtn">Manage Locations</button>
-            </div>
-        </div>
-
-        <div class="calendar-container">
-            <div id="calendar"></div>
-        </div>
-
-        <!-- Modal for adding/editing bookings -->
-        <div id="bookingModal" class="modal">
-            <div class="modal-content">
-                <span class="close">&times;</span>
-                <h2 id="modalTitle">Add Booking</h2>
-                <form id="bookingForm">
-                    <div class="form-group">
-                        <label for="memberID">Member ID</label>
-                        <input type="text" id="memberID" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="roomSelect">Room</label>
-                        <select id="roomSelect" required></select>
-                    </div>
-                    <div class="form-group">
-                        <label for="startDate">Check-in Date</label>
-                        <input type="date" id="startDate" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="endDate">Check-out Date</label>
-                        <input type="date" id="endDate" required>
-                    </div>
-                    <input type="hidden" id="bookingId">
-                    <button type="submit">Save</button>
-                </form>
-            </div>
-        </div>
-
-        <!-- Modal for managing rooms -->
-        <div id="roomsModal" class="modal">
-            <div class="modal-content">
-                <span class="close">&times;</span>
-                <h2>Manage Rooms</h2>
-                <div class="rooms-list" id="roomsList"></div>
-                <form id="roomForm">
-                    <div class="form-group">
-                        <label for="roomName">Room Name</label>
-                        <input type="text" id="roomName" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="roomLocation">Location</label>
-                        <select id="roomLocation" required></select>
-                    </div>
-                    <button type="submit">Add Room</button>
-                </form>
-            </div>
-        </div>
-
-        <!-- Modal for managing locations -->
-        <div id="locationsModal" class="modal">
-            <div class="modal-content">
-                <span class="close">&times;</span>
-                <h2>Manage Locations</h2>
-                <div class="locations-list" id="locationsList"></div>
-                <form id="locationForm">
-                    <div class="form-group">
-                        <label for="locationName">Location Name</label>
-                        <input type="text" id="locationName" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="locationAddress">Address</label>
-                        <input type="text" id="locationAddress" required>
-                    </div>
-                    <button type="submit">Add Location</button>
-                </form>
-            </div>
-        </div>
-    </div>
+    </footer>
 
     <!-- Firebase SDK -->
-    <script type="module" src="js/firebase-config.js"></script>
-    
-    <!-- FullCalendar Library -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/5.11.3/main.min.js"></script>
-    
-    <!-- Application Scripts -->
+    <script type="module" src="js/firebase.js"></script>
     <script type="module" src="js/auth.js"></script>
     <script type="module" src="js/calendar.js"></script>
     <script type="module" src="js/app.js"></script>

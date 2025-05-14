@@ -1,893 +1,513 @@
-// Calendar functionality for 1M House
-import { database } from './firebase-config.js';
-import { isAuthenticated } from './auth.js';
-import { 
-    ref, 
-    onValue, 
-    push, 
-    update, 
-    remove, 
-    get, 
-    set 
-} from "https://www.gstatic.com/firebasejs/11.7.1/firebase-database.js";
+import { BookingsAPI, RoomsAPI } from './firebase.js';
+import { isAdmin } from './auth.js';
 
 // DOM Elements
-const calendarEl = document.getElementById('calendar');
-const bookingModal = document.getElementById('bookingModal');
-const roomsModal = document.getElementById('roomsModal');
-const locationsModal = document.getElementById('locationsModal');
-const bookingForm = document.getElementById('bookingForm');
-const roomForm = document.getElementById('roomForm');
-const locationForm = document.getElementById('locationForm');
-const roomsList = document.getElementById('roomsList');
-const locationsList = document.getElementById('locationsList');
-const roomSelect = document.getElementById('roomSelect');
-const roomLocation = document.getElementById('roomLocation');
-const modalTitle = document.getElementById('modalTitle');
-const bookingId = document.getElementById('bookingId');
-const locationDropdown = document.getElementById('locationDropdown');
+const calendarContainer = document.querySelector('.calendar-container');
+const calendarHeader = document.querySelector('.calendar-header');
+const calendarBody = document.querySelector('.calendar-body');
+const currentMonthElement = document.getElementById('current-month');
+const prevMonthButton = document.getElementById('prev-month');
+const nextMonthButton = document.getElementById('next-month');
 
-// Close buttons for modals
-document.querySelectorAll('.close').forEach(closeBtn => {
-    closeBtn.addEventListener('click', () => {
-        bookingModal.style.display = 'none';
-        roomsModal.style.display = 'none';
-        locationsModal.style.display = 'none';
-    });
-});
-
-// Global variables
-let calendar;
-let currentBookings = [];
+// Calendar State
+let currentDate = new Date();
+let currentMonth = currentDate.getMonth();
+let currentYear = currentDate.getFullYear();
 let rooms = [];
-let locations = [];
-let currentLocation = 'Granada, Spain';
+let bookings = [];
+let selectedStartCell = null;
+let selectedEndCell = null;
+let isSelecting = false;
 
-// Initialize calendar
-export function initCalendar() {
-    // Create calendar instance
-    calendar = new FullCalendar.Calendar(calendarEl, {
-        initialView: 'resourceTimelineMonth',
-        headerToolbar: {
-            left: 'prev,next today',
-            center: 'title',
-            right: 'resourceTimelineDay,resourceTimelineWeek,resourceTimelineMonth'
-        },
-        selectable: true,
-        selectMirror: true,
-        editable: isAuthenticated(),
-        resourceAreaHeaderContent: 'Rooms',
-        resourceLabelDidMount: function(info) {
-            // Style the resource labels
-            info.el.style.padding = '8px';
-        },
-        eventClick: handleEventClick,
-        select: handleDateSelect,
-        events: [], // Will be populated from Firebase
-        resources: [], // Will be populated from Firebase
-        resourceOrder: 'title',
-        schedulerLicenseKey: 'GPL-My-Project-Is-Open-Source'
-    });
+// Initialize Calendar
+export async function initCalendar() {
+  try {
+    // Fetch rooms and set up initial calendar
+    rooms = await RoomsAPI.getAll();
     
-    // Render the calendar
-    calendar.render();
+    // Set up event listeners
+    setupEventListeners();
     
-    // Load data from Firebase
-    loadLocations();
-    loadRooms();
-    loadBookings();
-    
-    // Initialize form event listeners
-    initFormHandlers();
-    
-    // Initialize location dropdown
-    initLocationDropdown();
+    // Render initial calendar
+    await renderCalendar(currentYear, currentMonth);
+  } catch (error) {
+    console.error('Error initializing calendar:', error);
+    showNotification('Failed to load calendar data', 'error');
+  }
 }
 
-// Initialize location dropdown
-function initLocationDropdown() {
-    document.querySelectorAll('.dropdown-content a').forEach(item => {
-        item.addEventListener('click', function(e) {
-            e.preventDefault();
-            
-            if (this.classList.contains('disabled')) {
-                return;
-            }
-            
-            const value = this.getAttribute('data-value');
-            const text = this.textContent;
-            
-            // Update dropdown button text
-            locationDropdown.textContent = text;
-            currentLocation = text;
-            
-            // Update active class
-            document.querySelectorAll('.dropdown-content a').forEach(link => {
-                link.classList.remove('active');
-            });
-            this.classList.add('active');
-            
-            // If we had multiple locations, we would reload data based on selected location
-            // For now, we'll just simulate that
-            if (value === 'granada') {
-                // Default location is already loaded
-            }
-        });
-    });
+// Set up event listeners
+function setupEventListeners() {
+  // Navigation buttons
+  prevMonthButton.addEventListener('click', navigateToPreviousMonth);
+  nextMonthButton.addEventListener('click', navigateToNextMonth);
+  
+  // Admin auth state change
+  document.addEventListener('adminAuthStateChanged', handleAuthStateChanged);
 }
 
-// Load locations from Firebase
-function loadLocations() {
-    const locationsRef = ref(database, 'locations');
+// Handle authentication state changes
+function handleAuthStateChanged(event) {
+  const { isAdmin } = event.detail;
+  
+  // Refresh calendar with or without admin capabilities
+  renderCalendar(currentYear, currentMonth);
+}
+
+// Navigate to previous month
+async function navigateToPreviousMonth() {
+  currentMonth--;
+  
+  if (currentMonth < 0) {
+    currentMonth = 11;
+    currentYear--;
+  }
+  
+  await renderCalendar(currentYear, currentMonth);
+}
+
+// Navigate to next month
+async function navigateToNextMonth() {
+  currentMonth++;
+  
+  if (currentMonth > 11) {
+    currentMonth = 0;
+    currentYear++;
+  }
+  
+  await renderCalendar(currentYear, currentMonth);
+}
+
+// Render calendar for specified month and year
+async function renderCalendar(year, month) {
+  try {
+    // Update header display
+    updateMonthDisplay(year, month);
     
-    onValue(locationsRef, (snapshot) => {
-        locations = [];
-        roomLocation.innerHTML = '';
-        locationsList.innerHTML = '';
-        
-        snapshot.forEach((childSnapshot) => {
-            const locationData = childSnapshot.val();
-            const locationKey = childSnapshot.key;
-            
-            locations.push({
-                id: locationKey,
-                name: locationData.name,
-                address: locationData.address
-            });
-            
-            // Populate location select dropdown
-            const option = document.createElement('option');
-            option.value = locationKey;
-            option.textContent = locationData.name;
-            roomLocation.appendChild(option);
-            
-            // Populate locations list for admin
-            if (isAuthenticated()) {
-                const listItem = document.createElement('div');
-                listItem.className = 'list-item';
-                listItem.innerHTML = `
-                    <div>
-                        <strong>${locationData.name}</strong><br>
-                        ${locationData.address}
-                    </div>
-                    <button class="delete-btn" data-id="${locationKey}">Delete</button>
-                `;
-                locationsList.appendChild(listItem);
-                
-                // Add delete event listener
-                listItem.querySelector('.delete-btn').addEventListener('click', () => {
-                    deleteLocation(locationKey);
-                });
-            }
-        });
-        
-        // If no locations exist, add default Granada location
-        if (locations.length === 0 && isAuthenticated()) {
-            addDefaultLocation();
-        }
-    });
-}
-
-// Add default Granada location
-function addDefaultLocation() {
-    const locationsRef = ref(database, 'locations');
-    push(locationsRef, {
-        name: 'Granada House',
-        address: 'Calle Principal, Granada, Spain'
-    });
-}
-
-// Load rooms from Firebase
-function loadRooms() {
-    const roomsRef = ref(database, 'rooms');
+    // Get the first day of the month and the number of days
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
     
-    onValue(roomsRef, (snapshot) => {
-        rooms = [];
-        roomSelect.innerHTML = '';
-        roomsList.innerHTML = '';
-        
-        // Clear calendar resources
-        calendar.getResources().forEach(resource => resource.remove());
-        
-        snapshot.forEach((childSnapshot) => {
-            const roomData = childSnapshot.val();
-            const roomKey = childSnapshot.key;
-            
-            rooms.push({
-                id: roomKey,
-                name: roomData.name,
-                locationId: roomData.locationId
-            });
-            
-            // Add room to calendar resources
-            calendar.addResource({
-                id: roomKey,
-                title: roomData.name
-            });
-            
-            // Populate room select dropdown
-            const option = document.createElement('option');
-            option.value = roomKey;
-            option.textContent = roomData.name;
-            roomSelect.appendChild(option);
-            
-            // Populate rooms list for admin
-            if (isAuthenticated()) {
-                const listItem = document.createElement('div');
-                listItem.className = 'list-item';
-                
-                // Find location name
-                const location = locations.find(loc => loc.id === roomData.locationId);
-                const locationName = location ? location.name : 'Unknown';
-                
-                listItem.innerHTML = `
-                    <div>
-                        <strong>${roomData.name}</strong><br>
-                        ${locationName}
-                    </div>
-                    <button class="delete-btn" data-id="${roomKey}">Delete</button>
-                `;
-                roomsList.appendChild(listItem);
-                
-                // Add delete event listener
-                listItem.querySelector('.delete-btn').addEventListener('click', () => {
-                    deleteRoom(roomKey);
-                });
-            }
-        });
-        
-        // If no rooms exist and authenticated, add default rooms
-        if (rooms.length === 0 && locations.length > 0 && isAuthenticated()) {
-            addDefaultRooms(locations[0].id);
-        }
-    });
-}
-
-// Add default rooms
-function addDefaultRooms(locationId) {
-    const roomsRef = ref(database, 'rooms');
+    // Calculate start and end dates for bookings query
+    // Include previous and next month days that might be shown
+    const startDate = new Date(year, month, 1);
+    startDate.setDate(startDate.getDate() - 7); // Go back a week to cover any overlap
     
-    // Add 5 bedrooms
-    for (let i = 1; i <= 5; i++) {
-        push(roomsRef, {
-            name: `Bedroom ${i}`,
-            locationId: locationId
-        });
+    const endDate = new Date(year, month + 1, 0);
+    endDate.setDate(endDate.getDate() + 7); // Go forward a week to cover any overlap
+    
+    // Fetch bookings for the date range
+    bookings = await BookingsAPI.getBookingsByDateRange(startDate, endDate);
+    
+    // Generate calendar
+    generateCalendarHeader(year, month);
+    generateCalendarBody(year, month, daysInMonth, firstDay);
+    
+    // If admin, add selection capabilities
+    if (isAdmin()) {
+      setupAdminCalendarEvents();
     }
+  } catch (error) {
+    console.error('Error rendering calendar:', error);
+    showNotification('Failed to render calendar', 'error');
+  }
 }
 
-// Load bookings from Firebase
-function loadBookings() {
-    const bookingsRef = ref(database, 'bookings');
+// Update month display in the header
+function updateMonthDisplay(year, month) {
+  const monthNames = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+  
+  currentMonthElement.textContent = `${monthNames[month]} ${year}`;
+}
+
+// Generate calendar header (days of the week and dates)
+function generateCalendarHeader(year, month) {
+  // Clear existing header
+  calendarHeader.innerHTML = '';
+  
+  // Add empty cell for room names column
+  const emptyHeaderCell = document.createElement('div');
+  emptyHeaderCell.className = 'calendar-header-cell';
+  emptyHeaderCell.textContent = 'Rooms';
+  calendarHeader.appendChild(emptyHeaderCell);
+  
+  // Get the current date for highlighting today
+  const today = new Date();
+  const isCurrentMonth = today.getMonth() === month && today.getFullYear() === year;
+  
+  // Get days to display (7 days starting from current date)
+  const startDate = new Date(year, month, 1);
+  const dayOfWeek = startDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
+  
+  // Adjust start date to show Sunday as the first day
+  startDate.setDate(startDate.getDate() - dayOfWeek);
+  
+  // Add day of week headers and date headers
+  for (let i = 0; i < 7; i++) {
+    const currentDate = new Date(startDate);
+    currentDate.setDate(startDate.getDate() + i);
     
-    onValue(bookingsRef, (snapshot) => {
-        // Remove all existing events
-        currentBookings = [];
-        calendar.getEvents().forEach(event => event.remove());
+    const dayOfWeek = currentDate.getDay();
+    const date = currentDate.getDate();
+    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+    const isToday = 
+      isCurrentMonth && 
+      date === today.getDate() && 
+      currentDate.getMonth() === month;
+    
+    // Create day of week cell
+    const dayOfWeekCell = document.createElement('div');
+    dayOfWeekCell.className = `calendar-header-cell day-of-week ${isWeekend ? 'weekend' : ''}`;
+    dayOfWeekCell.textContent = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][dayOfWeek];
+    calendarHeader.appendChild(dayOfWeekCell);
+    
+    // Store date info as data attributes for reference
+    dayOfWeekCell.dataset.date = currentDate.toISOString().split('T')[0];
+    dayOfWeekCell.dataset.day = i;
+  }
+}
+
+// Generate calendar body (rooms and availability)
+function generateCalendarBody(year, month, daysInMonth, firstDay) {
+  // Clear existing body
+  calendarBody.innerHTML = '';
+  
+  // Get the current date
+  const today = new Date();
+  
+  // Get the first day to display (adjust to start from Sunday)
+  const startDate = new Date(year, month, 1);
+  const dayOfWeek = startDate.getDay();
+  startDate.setDate(startDate.getDate() - dayOfWeek);
+  
+  // Create a row for each room
+  rooms.forEach(room => {
+    const roomRow = document.createElement('div');
+    roomRow.className = 'calendar-room-row';
+    roomRow.dataset.roomId = room.id;
+    
+    // Add room name cell
+    const roomNameCell = document.createElement('div');
+    roomNameCell.className = 'calendar-room-name';
+    roomNameCell.textContent = room.name;
+    roomRow.appendChild(roomNameCell);
+    
+    // Add cells for each day of the week
+    for (let i = 0; i < 7; i++) {
+      const currentDate = new Date(startDate);
+      currentDate.setDate(startDate.getDate() + i);
+      
+      const dayOfWeek = currentDate.getDay();
+      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+      const isCurrentMonth = currentDate.getMonth() === month;
+      
+      // Create cell for this day
+      const cell = document.createElement('div');
+      cell.className = `calendar-cell ${isWeekend ? 'weekend' : ''} ${isCurrentMonth ? '' : 'other-month'}`;
+      
+      // Store date info as data attributes for reference
+      cell.dataset.date = currentDate.toISOString().split('T')[0];
+      cell.dataset.roomId = room.id;
+      cell.dataset.day = i;
+      
+      // Check for bookings on this date for this room
+      const dateBookings = bookings.filter(booking => {
+        const bookingStart = new Date(booking.startDate);
+        const bookingEnd = new Date(booking.endDate);
         
-        snapshot.forEach((childSnapshot) => {
-            const bookingData = childSnapshot.val();
-            const bookingKey = childSnapshot.key;
-            
-            currentBookings.push({
-                id: bookingKey,
-                memberId: bookingData.memberId,
-                roomId: bookingData.roomId,
-                start: bookingData.start,
-                end: bookingData.end
-            });
-            
-            // Find room for the booking
-            const room = rooms.find(room => room.id === bookingData.roomId);
-            const roomName = room ? room.name : 'Unknown Room';
-            
-            // Add event to calendar
-            calendar.addEvent({
-                id: bookingKey,
-                title: `ID: ${bookingData.memberId}`,
-                start: bookingData.start,
-                end: bookingData.end,
-                resourceId: bookingData.roomId,
-                extendedProps: {
-                    memberId: bookingData.memberId
-                }
-            });
-        });
-    });
-}
-
-// Event handler for clicking an event
-function handleEventClick(info) {
-    if (!isAuthenticated()) return;
-    
-    const event = info.event;
-    
-    // Set modal title and fill form fields
-    modalTitle.textContent = 'Edit Booking';
-    document.getElementById('memberID').value = event.extendedProps.memberId;
-    document.getElementById('roomSelect').value = event.getResources()[0].id;
-    
-    // Format dates for input fields (YYYY-MM-DD)
-    const startDate = new Date(event.start);
-    const endDate = new Date(event.end);
-    
-    document.getElementById('startDate').value = formatDateForInput(startDate);
-    document.getElementById('endDate').value = formatDateForInput(endDate);
-    bookingId.value = event.id;
-    
-    // Show the modal
-    bookingModal.style.display = 'block';
-}
-
-// Event handler for selecting dates
-function handleDateSelect(info) {
-    if (!isAuthenticated()) return;
-    
-    // Set modal title and clear form fields
-    modalTitle.textContent = 'Add Booking';
-    bookingForm.reset();
-    
-    // Set selected dates
-    document.getElementById('startDate').value = formatDateForInput(info.start);
-    document.getElementById('endDate').value = formatDateForInput(info.end);
-    bookingId.value = '';
-    
-    // Show the modal
-    bookingModal.style.display = 'block';
-}
-
-// Format date for input field
-function formatDateForInput(date) {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-}
-
-// Initialize form handlers
-function initFormHandlers() {
-    // Booking form submission
-    bookingForm.addEventListener('submit', (e) => {
-        e.preventDefault();
+        // Set times to midnight for date comparison
+        bookingStart.setHours(0, 0, 0, 0);
+        bookingEnd.setHours(0, 0, 0, 0);
+        currentDate.setHours(0, 0, 0, 0);
         
-        const memberId = document.getElementById('memberID').value;
-        const roomId = document.getElementById('roomSelect').value;
-        const startDate = document.getElementById('startDate').value;
-        const endDate = document.getElementById('endDate').value;
-        const bookingIdValue = bookingId.value;
+        return (
+          booking.roomId === room.id &&
+          currentDate >= bookingStart &&
+          currentDate <= bookingEnd
+        );
+      });
+      
+      // If there's a booking, mark the cell accordingly
+      if (dateBookings.length > 0) {
+        const booking = dateBookings[0]; // Take the first booking if multiple
         
-        // Prepare booking data
-        const bookingData = {
-            memberId: memberId,
-            roomId: roomId,
-            start: startDate,
-            end: endDate
-        };
+        // Add booking status class
+        cell.classList.add(booking.status);
         
-        if (bookingIdValue) {
-            // Update existing booking
-            const bookingRef = ref(database, `bookings/${bookingIdValue}`);
-            update(bookingRef, bookingData);
-        } else {
-            // Add new booking
-            const bookingsRef = ref(database, 'bookings');
-            push(bookingsRef, bookingData);
+        // Add visual continuity for multi-day bookings
+        const bookingStart = new Date(booking.startDate);
+        const bookingEnd = new Date(booking.endDate);
+        
+        // Set times to midnight for date comparison
+        bookingStart.setHours(0, 0, 0, 0);
+        bookingEnd.setHours(0, 0, 0, 0);
+        
+        // Create a div for the booking that spans days
+        const bookingElement = document.createElement('div');
+        bookingElement.className = `continued-booking ${booking.status}`;
+        
+        // Mark start and end of booking
+        if (currentDate.getTime() === bookingStart.getTime()) {
+          bookingElement.classList.add('start');
         }
         
-        // Close the modal
-        bookingModal.style.display = 'none';
-    });
-    
-    // Room form submission
-    roomForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        
-        const roomName = document.getElementById('roomName').value;
-        const locationId = document.getElementById('roomLocation').value;
-        
-        // Add new room
-        const roomsRef = ref(database, 'rooms');
-        push(roomsRef, {
-            name: roomName,
-            locationId: locationId
-        });
-        
-        // Reset form
-        roomForm.reset();
-    });
-    
-    // Location form submission
-    locationForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        
-        const locationName = document.getElementById('locationName').value;
-        const locationAddress = document.getElementById('locationAddress').value;
-        
-        // Add new location
-        const locationsRef = ref(database, 'locations');
-        push(locationsRef, {
-            name: locationName,
-            address: locationAddress
-        });
-        
-        // Reset form
-        locationForm.reset();
-    });
-}
-
-// Delete a room
-function deleteRoom(roomId) {
-    if (!isAuthenticated()) return;
-    
-    // Check if room has bookings
-    const hasBookings = currentBookings.some(booking => booking.roomId === roomId);
-    if (hasBookings) {
-        alert('Cannot delete room with existing bookings');
-        return;
-    }
-    
-    // Delete room from Firebase
-    const roomRef = ref(database, `rooms/${roomId}`);
-    remove(roomRef);
-}
-
-// Delete a location
-function deleteLocation(locationId) {
-    if (!isAuthenticated()) return;
-    
-    // Check if location has rooms
-    const hasRooms = rooms.some(room => room.locationId === locationId);
-    if (hasRooms) {
-        alert('Cannot delete location with existing rooms');
-        return;
-    }
-    
-    // Delete location from Firebase
-    const locationRef = ref(database, `locations/${locationId}`);
-    remove(locationRef);
-}
-
-// Export functions for use in other modules
-export { showBookingModal, showRoomsModal, showLocationsModal };
-
-// Show booking modal for adding a new booking
-function showBookingModal() {
-    modalTitle.textContent = 'Add Booking';
-    bookingForm.reset();
-    bookingId.value = '';
-    bookingModal.style.display = 'block';
-}
-
-// Show rooms modal
-function showRoomsModal() {
-    roomsModal.style.display = 'block';
-}
-
-// Show locations modal
-function showLocationsModal() {
-    locationsModal.style.display = 'block';
-}// Calendar functionality for 1M House
-import { database } from './firebase-config.js';
-import { isAuthenticated } from './auth.js';
-import { 
-    ref, 
-    onValue, 
-    push, 
-    update, 
-    remove, 
-    get, 
-    set 
-} from "https://www.gstatic.com/firebasejs/11.7.1/firebase-database.js";
-
-// DOM Elements
-const calendarEl = document.getElementById('calendar');
-const bookingModal = document.getElementById('bookingModal');
-const roomsModal = document.getElementById('roomsModal');
-const locationsModal = document.getElementById('locationsModal');
-const bookingForm = document.getElementById('bookingForm');
-const roomForm = document.getElementById('roomForm');
-const locationForm = document.getElementById('locationForm');
-const roomsList = document.getElementById('roomsList');
-const locationsList = document.getElementById('locationsList');
-const roomSelect = document.getElementById('roomSelect');
-const roomLocation = document.getElementById('roomLocation');
-const modalTitle = document.getElementById('modalTitle');
-const bookingId = document.getElementById('bookingId');
-
-// Close buttons for modals
-document.querySelectorAll('.close').forEach(closeBtn => {
-    closeBtn.addEventListener('click', () => {
-        bookingModal.style.display = 'none';
-        roomsModal.style.display = 'none';
-        locationsModal.style.display = 'none';
-    });
-});
-
-// Global variables
-let calendar;
-let currentBookings = [];
-let rooms = [];
-let locations = [];
-
-// Initialize calendar
-export function initCalendar() {
-    // Create calendar instance
-    calendar = new FullCalendar.Calendar(calendarEl, {
-        initialView: 'dayGridMonth',
-        headerToolbar: {
-            left: 'prev,next today',
-            center: 'title',
-            right: 'dayGridMonth,timeGridWeek,resourceTimelineMonth'
-        },
-        selectable: true,
-        selectMirror: true,
-        editable: isAuthenticated(),
-        eventClick: handleEventClick,
-        select: handleDateSelect,
-        events: [], // Will be populated from Firebase
-        resources: [] // Will be populated from Firebase
-    });
-    
-    // Render the calendar
-    calendar.render();
-    
-    // Load data from Firebase
-    loadLocations();
-    loadRooms();
-    loadBookings();
-    
-    // Initialize form event listeners
-    initFormHandlers();
-}
-
-// Load locations from Firebase
-function loadLocations() {
-    const locationsRef = ref(database, 'locations');
-    
-    onValue(locationsRef, (snapshot) => {
-        locations = [];
-        roomLocation.innerHTML = '';
-        locationsList.innerHTML = '';
-        
-        snapshot.forEach((childSnapshot) => {
-            const locationData = childSnapshot.val();
-            const locationKey = childSnapshot.key;
-            
-            locations.push({
-                id: locationKey,
-                name: locationData.name,
-                address: locationData.address
-            });
-            
-            // Populate location select dropdown
-            const option = document.createElement('option');
-            option.value = locationKey;
-            option.textContent = locationData.name;
-            roomLocation.appendChild(option);
-            
-            // Populate locations list for admin
-            if (isAuthenticated()) {
-                const listItem = document.createElement('div');
-                listItem.className = 'list-item';
-                listItem.innerHTML = `
-                    <div>
-                        <strong>${locationData.name}</strong><br>
-                        ${locationData.address}
-                    </div>
-                    <button class="delete-btn" data-id="${locationKey}">Delete</button>
-                `;
-                locationsList.appendChild(listItem);
-                
-                // Add delete event listener
-                listItem.querySelector('.delete-btn').addEventListener('click', () => {
-                    deleteLocation(locationKey);
-                });
-            }
-        });
-        
-        // If no locations exist, add default Granada location
-        if (locations.length === 0 && isAuthenticated()) {
-            addDefaultLocation();
-        }
-    });
-}
-
-// Add default Granada location
-function addDefaultLocation() {
-    const locationsRef = ref(database, 'locations');
-    push(locationsRef, {
-        name: 'Granada House',
-        address: 'Calle Principal, Granada, Spain'
-    });
-}
-
-// Load rooms from Firebase
-function loadRooms() {
-    const roomsRef = ref(database, 'rooms');
-    
-    onValue(roomsRef, (snapshot) => {
-        rooms = [];
-        roomSelect.innerHTML = '';
-        roomsList.innerHTML = '';
-        
-        // Clear calendar resources
-        calendar.getResources().forEach(resource => resource.remove());
-        
-        snapshot.forEach((childSnapshot) => {
-            const roomData = childSnapshot.val();
-            const roomKey = childSnapshot.key;
-            
-            rooms.push({
-                id: roomKey,
-                name: roomData.name,
-                locationId: roomData.locationId
-            });
-            
-            // Add room to calendar resources
-            calendar.addResource({
-                id: roomKey,
-                title: roomData.name
-            });
-            
-            // Populate room select dropdown
-            const option = document.createElement('option');
-            option.value = roomKey;
-            option.textContent = roomData.name;
-            roomSelect.appendChild(option);
-            
-            // Populate rooms list for admin
-            if (isAuthenticated()) {
-                const listItem = document.createElement('div');
-                listItem.className = 'list-item';
-                
-                // Find location name
-                const location = locations.find(loc => loc.id === roomData.locationId);
-                const locationName = location ? location.name : 'Unknown';
-                
-                listItem.innerHTML = `
-                    <div>
-                        <strong>${roomData.name}</strong><br>
-                        ${locationName}
-                    </div>
-                    <button class="delete-btn" data-id="${roomKey}">Delete</button>
-                `;
-                roomsList.appendChild(listItem);
-                
-                // Add delete event listener
-                listItem.querySelector('.delete-btn').addEventListener('click', () => {
-                    deleteRoom(roomKey);
-                });
-            }
-        });
-        
-        // If no rooms exist and authenticated, add default rooms
-        if (rooms.length === 0 && locations.length > 0 && isAuthenticated()) {
-            addDefaultRooms(locations[0].id);
-        }
-    });
-}
-
-// Add default rooms
-function addDefaultRooms(locationId) {
-    const roomsRef = ref(database, 'rooms');
-    
-    // Add 5 bedrooms
-    for (let i = 1; i <= 5; i++) {
-        push(roomsRef, {
-            name: `Bedroom ${i}`,
-            locationId: locationId
-        });
-    }
-}
-
-// Load bookings from Firebase
-function loadBookings() {
-    const bookingsRef = ref(database, 'bookings');
-    
-    onValue(bookingsRef, (snapshot) => {
-        // Remove all existing events
-        currentBookings = [];
-        calendar.getEvents().forEach(event => event.remove());
-        
-        snapshot.forEach((childSnapshot) => {
-            const bookingData = childSnapshot.val();
-            const bookingKey = childSnapshot.key;
-            
-            currentBookings.push({
-                id: bookingKey,
-                memberId: bookingData.memberId,
-                roomId: bookingData.roomId,
-                start: bookingData.start,
-                end: bookingData.end
-            });
-            
-            // Find room for the booking
-            const room = rooms.find(room => room.id === bookingData.roomId);
-            const roomName = room ? room.name : 'Unknown Room';
-            
-            // Add event to calendar
-            calendar.addEvent({
-                id: bookingKey,
-                title: `ID: ${bookingData.memberId}`,
-                start: bookingData.start,
-                end: bookingData.end,
-                resourceId: bookingData.roomId,
-                extendedProps: {
-                    memberId: bookingData.memberId
-                }
-            });
-        });
-    });
-}
-
-// Event handler for clicking an event
-function handleEventClick(info) {
-    if (!isAuthenticated()) return;
-    
-    const event = info.event;
-    
-    // Set modal title and fill form fields
-    modalTitle.textContent = 'Edit Booking';
-    document.getElementById('memberID').value = event.extendedProps.memberId;
-    document.getElementById('roomSelect').value = event.getResources()[0].id;
-    
-    // Format dates for input fields (YYYY-MM-DD)
-    const startDate = new Date(event.start);
-    const endDate = new Date(event.end);
-    
-    document.getElementById('startDate').value = formatDateForInput(startDate);
-    document.getElementById('endDate').value = formatDateForInput(endDate);
-    bookingId.value = event.id;
-    
-    // Show the modal
-    bookingModal.style.display = 'block';
-}
-
-// Event handler for selecting dates
-function handleDateSelect(info) {
-    if (!isAuthenticated()) return;
-    
-    // Set modal title and clear form fields
-    modalTitle.textContent = 'Add Booking';
-    bookingForm.reset();
-    
-    // Set selected dates
-    document.getElementById('startDate').value = formatDateForInput(info.start);
-    document.getElementById('endDate').value = formatDateForInput(info.end);
-    bookingId.value = '';
-    
-    // Show the modal
-    bookingModal.style.display = 'block';
-}
-
-// Format date for input field
-function formatDateForInput(date) {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-}
-
-// Initialize form handlers
-function initFormHandlers() {
-    // Booking form submission
-    bookingForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        
-        const memberId = document.getElementById('memberID').value;
-        const roomId = document.getElementById('roomSelect').value;
-        const startDate = document.getElementById('startDate').value;
-        const endDate = document.getElementById('endDate').value;
-        const bookingIdValue = bookingId.value;
-        
-        // Prepare booking data
-        const bookingData = {
-            memberId: memberId,
-            roomId: roomId,
-            start: startDate,
-            end: endDate
-        };
-        
-        if (bookingIdValue) {
-            // Update existing booking
-            const bookingRef = ref(database, `bookings/${bookingIdValue}`);
-            update(bookingRef, bookingData);
-        } else {
-            // Add new booking
-            const bookingsRef = ref(database, 'bookings');
-            push(bookingsRef, bookingData);
+        if (currentDate.getTime() === bookingEnd.getTime()) {
+          bookingElement.classList.add('end');
         }
         
-        // Close the modal
-        bookingModal.style.display = 'none';
-    });
-    
-    // Room form submission
-    roomForm.addEventListener('submit', (e) => {
-        e.preventDefault();
+        // Add booking name if available
+        if (booking.guestName) {
+          const nameElement = document.createElement('div');
+          nameElement.className = `booking-name ${booking.status}`;
+          nameElement.textContent = booking.guestName;
+          
+          // Only show name on first day of booking
+          if (currentDate.getTime() === bookingStart.getTime()) {
+            bookingElement.appendChild(nameElement);
+          }
+        }
         
-        const roomName = document.getElementById('roomName').value;
-        const locationId = document.getElementById('roomLocation').value;
+        // Store booking ID for admin functionality
+        bookingElement.dataset.bookingId = booking.id;
         
-        // Add new room
-        const roomsRef = ref(database, 'rooms');
-        push(roomsRef, {
-            name: roomName,
-            locationId: locationId
-        });
-        
-        // Reset form
-        roomForm.reset();
-    });
-    
-    // Location form submission
-    locationForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        
-        const locationName = document.getElementById('locationName').value;
-        const locationAddress = document.getElementById('locationAddress').value;
-        
-        // Add new location
-        const locationsRef = ref(database, 'locations');
-        push(locationsRef, {
-            name: locationName,
-            address: locationAddress
-        });
-        
-        // Reset form
-        locationForm.reset();
-    });
-}
-
-// Delete a room
-function deleteRoom(roomId) {
-    if (!isAuthenticated()) return;
-    
-    // Check if room has bookings
-    const hasBookings = currentBookings.some(booking => booking.roomId === roomId);
-    if (hasBookings) {
-        alert('Cannot delete room with existing bookings');
-        return;
+        cell.appendChild(bookingElement);
+      } else {
+        // Mark as available
+        cell.classList.add('available');
+      }
+      
+      // Add cell to row
+      roomRow.appendChild(cell);
     }
     
-    // Delete room from Firebase
-    const roomRef = ref(database, `rooms/${roomId}`);
-    remove(roomRef);
+    // Add row to calendar body
+    calendarBody.appendChild(roomRow);
+  });
 }
 
-// Delete a location
-function deleteLocation(locationId) {
-    if (!isAuthenticated()) return;
+// Set up admin calendar events for booking selection
+function setupAdminCalendarEvents() {
+  // Get all calendar cells
+  const cells = calendarBody.querySelectorAll('.calendar-cell');
+  
+  // Add event listeners for cell selection
+  cells.forEach(cell => {
+    // Add admin-specific class for styling
+    cell.classList.add('admin-booking-cell');
     
-    // Check if location has rooms
-    const hasRooms = rooms.some(room => room.locationId === locationId);
-    if (hasRooms) {
-        alert('Cannot delete location with existing rooms');
-        return;
+    // Handle cell click for selection
+    cell.addEventListener('click', handleCellClick);
+    
+    // Handle mouseenter for range selection
+    cell.addEventListener('mouseenter', handleCellMouseEnter);
+  });
+  
+  // Add document-level event to handle mouse up (end selection)
+  document.addEventListener('mouseup', handleDocumentMouseUp);
+}
+
+// Handle cell click (start selection or toggle selection)
+function handleCellClick(event) {
+  const cell = event.currentTarget;
+  
+  // If cell has a booking, open the booking for editing
+  const bookingElement = cell.querySelector('.continued-booking');
+  if (bookingElement) {
+    const bookingId = bookingElement.dataset.bookingId;
+    if (bookingId) {
+      // Dispatch event to open booking in admin panel
+      const bookingEvent = new CustomEvent('openBookingEdit', { 
+        detail: { bookingId }
+      });
+      document.dispatchEvent(bookingEvent);
+      return;
+    }
+  }
+  
+  // Start selection mode
+  if (!isSelecting) {
+    isSelecting = true;
+    selectedStartCell = cell;
+    selectedEndCell = cell;
+    
+    // Add selecting class to start cell
+    cell.classList.add('selecting');
+    
+    // Dispatch event with selected date and room
+    dispatchRangeSelectionEvent();
+  }
+}
+
+// Handle cell mouse enter (update selection range)
+function handleCellMouseEnter(event) {
+  if (!isSelecting) return;
+  
+  const cell = event.currentTarget;
+  const cellRoomId = cell.dataset.roomId;
+  const startCellRoomId = selectedStartCell.dataset.roomId;
+  
+  // Only allow selection within the same room
+  if (cellRoomId !== startCellRoomId) return;
+  
+  // Update end cell
+  selectedEndCell = cell;
+  
+  // Clear previous selection
+  const cells = calendarBody.querySelectorAll('.calendar-cell.selecting');
+  cells.forEach(c => c.classList.remove('selecting'));
+  
+  // Get start and end dates
+  const startDate = new Date(selectedStartCell.dataset.date);
+  const endDate = new Date(selectedEndCell.dataset.date);
+  
+  // Ensure start date is before end date
+  const isForward = startDate <= endDate;
+  const minDate = isForward ? startDate : endDate;
+  const maxDate = isForward ? endDate : startDate;
+  
+  // Highlight cells in the range
+  const roomCells = calendarBody.querySelectorAll(`.calendar-cell[data-room-id="${cellRoomId}"]`);
+  roomCells.forEach(roomCell => {
+    const cellDate = new Date(roomCell.dataset.date);
+    
+    if (cellDate >= minDate && cellDate <= maxDate) {
+      roomCell.classList.add('selecting');
+    }
+  });
+  
+  // Dispatch event with selected range
+  dispatchRangeSelectionEvent();
+}
+
+// Handle document mouse up (end selection)
+function handleDocumentMouseUp() {
+  if (!isSelecting) return;
+  
+  // End selection mode
+  isSelecting = false;
+  
+  // Get final selection
+  const startDate = new Date(selectedStartCell.dataset.date);
+  const endDate = new Date(selectedEndCell.dataset.date);
+  const roomId = selectedStartCell.dataset.roomId;
+  
+  // Make sure start date is before end date
+  const finalStartDate = startDate <= endDate ? startDate : endDate;
+  const finalEndDate = startDate <= endDate ? endDate : startDate;
+  
+  // Check if there are existing bookings in the range
+  const hasBookingsInRange = checkForBookingsInRange(roomId, finalStartDate, finalEndDate);
+  
+  if (hasBookingsInRange) {
+    // Clear selection
+    const cells = calendarBody.querySelectorAll('.calendar-cell.selecting');
+    cells.forEach(c => c.classList.remove('selecting'));
+    
+    // Show error notification
+    showNotification('Cannot create booking: Date range overlaps with existing booking', 'error');
+    return;
+  }
+  
+  // Dispatch event to create new booking
+  const newBookingEvent = new CustomEvent('createNewBooking', { 
+    detail: { 
+      startDate: finalStartDate, 
+      endDate: finalEndDate, 
+      roomId 
+    }
+  });
+  document.dispatchEvent(newBookingEvent);
+  
+  // Clear selection
+  const cells = calendarBody.querySelectorAll('.calendar-cell.selecting');
+  cells.forEach(c => c.classList.remove('selecting'));
+}
+
+// Check if there are existing bookings in the selected range
+function checkForBookingsInRange(roomId, startDate, endDate) {
+  // Set times to midnight for date comparison
+  startDate.setHours(0, 0, 0, 0);
+  endDate.setHours(0, 0, 0, 0);
+  
+  // Check each day in the range
+  const currentDate = new Date(startDate);
+  while (currentDate <= endDate) {
+    // Check if this date has a booking for this room
+    const bookingForDate = bookings.find(booking => {
+      const bookingStart = new Date(booking.startDate);
+      const bookingEnd = new Date(booking.endDate);
+      
+      // Set times to midnight for date comparison
+      bookingStart.setHours(0, 0, 0, 0);
+      bookingEnd.setHours(0, 0, 0, 0);
+      
+      return (
+        booking.roomId === roomId &&
+        currentDate >= bookingStart &&
+        currentDate <= bookingEnd
+      );
+    });
+    
+    if (bookingForDate) {
+      return true; // Found a booking in range
     }
     
-    // Delete location from Firebase
-    const locationRef = ref(database, `locations/${locationId}`);
-    remove(locationRef);
+    // Move to next day
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+  
+  return false; // No bookings in range
 }
 
-// Export functions for use in other modules
-export { showBookingModal, showRoomsModal, showLocationsModal };
-
-// Show booking modal for adding a new booking
-function showBookingModal() {
-    modalTitle.textContent = 'Add Booking';
-    bookingForm.reset();
-    bookingId.value = '';
-    bookingModal.style.display = 'block';
+// Dispatch event with selected date range
+function dispatchRangeSelectionEvent() {
+  // Only dispatch if both cells are selected
+  if (!selectedStartCell || !selectedEndCell) return;
+  
+  // Get start and end dates
+  const startDate = new Date(selectedStartCell.dataset.date);
+  const endDate = new Date(selectedEndCell.dataset.date);
+  
+  // Make sure start date is before end date
+  const finalStartDate = startDate <= endDate ? startDate : endDate;
+  const finalEndDate = startDate <= endDate ? endDate : startDate;
+  
+  // Create custom event with selection details
+  const selectionEvent = new CustomEvent('calendarRangeSelected', {
+    detail: {
+      startDate: finalStartDate,
+      endDate: finalEndDate,
+      roomId: selectedStartCell.dataset.roomId
+    }
+  });
+  
+  // Dispatch event
+  document.dispatchEvent(selectionEvent);
 }
 
-// Show rooms modal
-function showRoomsModal() {
-    roomsModal.style.display = 'block';
-}
-
-// Show locations modal
-function showLocationsModal() {
-    locationsModal.style.display = 'block';
+// Show notification message
+function showNotification(message, type = 'info') {
+  // Create notification element if it doesn't exist
+  let notification = document.querySelector('.notification');
+  
+  if (!notification) {
+    notification = document.createElement('div');
+    notification.className = 'notification';
+    document.body.appendChild(notification);
+  }
+  
+  // Set notification content and style
+  notification.textContent = message;
+  notification.className = `notification ${type}`;
+  
+  // Show notification
+  notification.style.display = 'block';
+  
+  // Hide notification after 3 seconds
+  setTimeout(() => {
+    notification.style.display = 'none';
+  }, 3000);
 }
