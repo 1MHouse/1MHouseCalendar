@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>1M House - Members Calendar</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/5.11.3/main.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>1M House</h1>
+            <p>Members Club Calendar - Granada, Spain</p>
+        </header>
+
+        <div class="auth-section" id="authSection">
+            <div class="login-form" id="loginForm">
+                <h2>Admin Access</h2>
+                <input type="email" id="email" placeholder="Email">
+                <input type="password" id="password" placeholder="Passcode">
+                <button id="loginBtn">Login</button>
+                <p id="authMessage"></p>
+            </div>
+            
+            <div class="user-panel" id="userPanel" style="display:none;">
+                <p>Logged in as: <span id="userEmail"></span></p>
+                <button id="logoutBtn">Logout</button>
+            </div>
+        </div>
+
+        <div class="controls" id="adminControls" style="display:none;">
+            <div class="control-panel">
+                <h3>Booking Controls</h3>
+                <button id="addBookingBtn">Add Booking</button>
+                <button id="manageRoomsBtn">Manage Rooms</button>
+                <button id="manageLocationsBtn">Manage Locations</button>
+            </div>
+        </div>
+
+        <div class="calendar-container">
+            <div id="calendar"></div>
+        </div>
+
+        <!-- Modal for adding/editing bookings -->
+        <div id="bookingModal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2 id="modalTitle">Add Booking</h2>
+                <form id="bookingForm">
+                    <div class="form-group">
+                        <label for="memberID">Member ID</label>
+                        <input type="text" id="memberID" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="roomSelect">Room</label>
+                        <select id="roomSelect" required></select>
+                    </div>
+                    <div class="form-group">
+                        <label for="startDate">Check-in Date</label>
+                        <input type="date" id="startDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="endDate">Check-out Date</label>
+                        <input type="date" id="endDate" required>
+                    </div>
+                    <input type="hidden" id="bookingId">
+                    <button type="submit">Save</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Modal for managing rooms -->
+        <div id="roomsModal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2>Manage Rooms</h2>
+                <div class="rooms-list" id="roomsList"></div>
+                <form id="roomForm">
+                    <div class="form-group">
+                        <label for="roomName">Room Name</label>
+                        <input type="text" id="roomName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="roomLocation">Location</label>
+                        <select id="roomLocation" required></select>
+                    </div>
+                    <button type="submit">Add Room</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Modal for managing locations -->
+        <div id="locationsModal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2>Manage Locations</h2>
+                <div class="locations-list" id="locationsList"></div>
+                <form id="locationForm">
+                    <div class="form-group">
+                        <label for="locationName">Location Name</label>
+                        <input type="text" id="locationName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="locationAddress">Address</label>
+                        <input type="text" id="locationAddress" required>
+                    </div>
+                    <button type="submit">Add Location</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module" src="js/firebase-config.js"></script>
+    
+    <!-- FullCalendar Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/5.11.3/main.min.js"></script>
+    
+    <!-- Application Scripts -->
+    <script type="module" src="js/auth.js"></script>
+    <script type="module" src="js/calendar.js"></script>
+    <script type="module" src="js/app.js"></script>
+</body>
+</html>
