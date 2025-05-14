@@ -3,294 +3,163 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>1M House - Exclusive Members Club</title>
+    <title>1M House - Availability Calendar</title>
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="css/calendar.css">
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
     <header>
-        <div class="container">
-            <div class="logo">
-                <h1>1M House</h1>
-                <p>Granada, Spain</p>
-            </div>
-            <nav>
-                <ul>
-                    <li><a href="#" class="active">Availability</a></li>
-                    <li><a href="#">About</a></li>
-                    <li><a href="#">Membership</a></li>
-                    <li><a href="#">Contact</a></li>
-                </ul>
-            </nav>
+        <div class="logo">
+            <h1>1M House</h1>
+            <p>Members Club - Granada, Spain</p>
+        </div>
+        <div class="nav-buttons">
+            <button id="admin-login-btn">Admin Login</button>
         </div>
     </header>
 
     <main>
-        <section class="hero">
-            <div class="container">
-                <h2>Check Room Availability</h2>
-                <p>Our exclusive Granada property features 5 luxurious bedrooms available to members.</p>
-            </div>
-        </section>
-
         <section class="calendar-section">
-            <div class="container">
+            <div class="calendar-header">
+                <h2>Room Availability</h2>
                 <div class="calendar-navigation">
-                    <button id="prev-month" class="nav-btn"><i class="fas fa-chevron-left"></i> Previous</button>
+                    <button id="prev-month-btn">Previous Month</button>
                     <h3 id="current-month">May 2025</h3>
-                    <button id="next-month" class="nav-btn">Next <i class="fas fa-chevron-right"></i></button>
+                    <button id="next-month-btn">Next Month</button>
                 </div>
-                
-                <div class="calendar-container">
-                    <div class="calendar-header">
-                        <!-- Days will be inserted here by JavaScript -->
-                    </div>
-                    <div class="calendar-body">
-                        <!-- Rooms and availability will be inserted here by JavaScript -->
-                    </div>
-                </div>
-
-                <div class="legend">
-                    <div class="legend-item">
-                        <div class="legend-color available"></div>
-                        <span>Available</span>
-                    </div>
-                    <div class="legend-item">
-                        <div class="legend-color booked"></div>
-                        <span>Booked</span>
-                    </div>
-                    <div class="legend-item">
-                        <div class="legend-color maintenance"></div>
-                        <span>Maintenance</span>
-                    </div>
-                </div>
+            </div>
+            
+            <div class="calendar-container" id="availability-calendar">
+                <!-- Calendar will be generated here by JavaScript -->
+                <div class="loading">Loading calendar...</div>
             </div>
         </section>
 
-        <section class="admin-section">
-            <div class="container">
-                <div class="admin-login" id="admin-login-form">
-                    <h3>Admin Login</h3>
-                    <form id="login-form">
+        <section class="admin-section" id="admin-panel" style="display: none;">
+            <h2>Admin Panel</h2>
+            <div class="admin-tabs">
+                <button class="tab-btn active" data-tab="bookings">Manage Bookings</button>
+                <button class="tab-btn" data-tab="rooms">Manage Rooms</button>
+                <button class="tab-btn" data-tab="locations">Manage Locations</button>
+            </div>
+            
+            <div class="tab-content" id="bookings-tab">
+                <h3>Manage Bookings</h3>
+                <div class="admin-form">
+                    <h4>Add/Edit Booking</h4>
+                    <form id="booking-form">
                         <div class="form-group">
-                            <label for="email">Email</label>
-                            <input type="email" id="email" placeholder="Enter admin email" required>
+                            <label for="booking-room">Room:</label>
+                            <select id="booking-room" required></select>
                         </div>
                         <div class="form-group">
-                            <label for="password">Password</label>
-                            <input type="password" id="password" placeholder="Enter password" required>
+                            <label for="booking-start">Check-in Date:</label>
+                            <input type="date" id="booking-start" required>
                         </div>
-                        <button type="submit" class="btn btn-primary">Login</button>
+                        <div class="form-group">
+                            <label for="booking-end">Check-out Date:</label>
+                            <input type="date" id="booking-end" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="booking-name">Member Name:</label>
+                            <input type="text" id="booking-name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="booking-notes">Notes:</label>
+                            <textarea id="booking-notes"></textarea>
+                        </div>
+                        <div class="form-buttons">
+                            <button type="submit">Save Booking</button>
+                            <button type="button" id="delete-booking" style="display: none;">Delete Booking</button>
+                            <button type="button" id="cancel-edit">Cancel</button>
+                        </div>
+                        <input type="hidden" id="booking-id">
                     </form>
                 </div>
-
-                <div class="admin-panel" id="admin-panel" style="display: none;">
-                    <h3>Admin Panel</h3>
-                    
-                    <div class="admin-tabs">
-                        <button class="tab-btn active" data-tab="bookings">Manage Bookings</button>
-                        <button class="tab-btn" data-tab="rooms">Manage Rooms</button>
-                        <button class="tab-btn" data-tab="locations">Manage Locations</button>
-                        <button id="logout-btn" class="btn btn-secondary">Logout</button>
-                    </div>
-                    
-                    <div class="tab-content" id="bookings-tab">
-                        <h4>Manage Bookings</h4>
-                        <button id="add-booking-btn" class="btn btn-primary">Add New Booking</button>
-                        
-                        <div id="booking-form" class="form-container" style="display: none;">
-                            <h5>Add/Edit Booking</h5>
-                            <form id="booking-form-element">
-                                <input type="hidden" id="booking-id">
-                                <div class="form-group">
-                                    <label for="room-select">Room</label>
-                                    <select id="room-select" required>
-                                        <!-- Rooms will be populated by JavaScript -->
-                                    </select>
-                                </div>
-                                <div class="form-group">
-                                    <label for="start-date">Start Date</label>
-                                    <input type="date" id="start-date" required>
-                                </div>
-                                <div class="form-group">
-                                    <label for="end-date">End Date</label>
-                                    <input type="date" id="end-date" required>
-                                </div>
-                                <div class="form-group">
-                                    <label for="status">Status</label>
-                                    <select id="status" required>
-                                        <option value="booked">Booked</option>
-                                        <option value="maintenance">Maintenance</option>
-                                    </select>
-                                </div>
-                                <div class="form-group">
-                                    <label for="guest-name">Guest Name</label>
-                                    <input type="text" id="guest-name">
-                                </div>
-                                <div class="form-group">
-                                    <label for="guest-email">Guest Email</label>
-                                    <input type="email" id="guest-email">
-                                </div>
-                                <div class="form-buttons">
-                                    <button type="submit" class="btn btn-primary">Save</button>
-                                    <button type="button" id="cancel-booking-btn" class="btn btn-secondary">Cancel</button>
-                                </div>
-                            </form>
+            </div>
+            
+            <div class="tab-content" id="rooms-tab" style="display: none;">
+                <h3>Manage Rooms</h3>
+                <div class="admin-list" id="rooms-list">
+                    <!-- Rooms will be listed here -->
+                </div>
+                <div class="admin-form">
+                    <h4>Add/Edit Room</h4>
+                    <form id="room-form">
+                        <div class="form-group">
+                            <label for="room-name">Room Name:</label>
+                            <input type="text" id="room-name" required>
                         </div>
-                        
-                        <div class="bookings-list">
-                            <table id="bookings-table">
-                                <thead>
-                                    <tr>
-                                        <th>Room</th>
-                                        <th>Start Date</th>
-                                        <th>End Date</th>
-                                        <th>Status</th>
-                                        <th>Guest</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <!-- Bookings will be populated by JavaScript -->
-                                </tbody>
-                            </table>
+                        <div class="form-group">
+                            <label for="room-location">Location:</label>
+                            <select id="room-location" required></select>
                         </div>
-                    </div>
-                    
-                    <div class="tab-content" id="rooms-tab" style="display: none;">
-                        <h4>Manage Rooms</h4>
-                        <button id="add-room-btn" class="btn btn-primary">Add New Room</button>
-                        
-                        <div id="room-form" class="form-container" style="display: none;">
-                            <h5>Add/Edit Room</h5>
-                            <form id="room-form-element">
-                                <input type="hidden" id="room-id">
-                                <div class="form-group">
-                                    <label for="room-name">Room Name</label>
-                                    <input type="text" id="room-name" required>
-                                </div>
-                                <div class="form-group">
-                                    <label for="room-location">Location</label>
-                                    <select id="room-location" required>
-                                        <!-- Locations will be populated by JavaScript -->
-                                    </select>
-                                </div>
-                                <div class="form-group">
-                                    <label for="room-capacity">Capacity</label>
-                                    <input type="number" id="room-capacity" min="1" required>
-                                </div>
-                                <div class="form-group">
-                                    <label for="room-description">Description</label>
-                                    <textarea id="room-description"></textarea>
-                                </div>
-                                <div class="form-buttons">
-                                    <button type="submit" class="btn btn-primary">Save</button>
-                                    <button type="button" id="cancel-room-btn" class="btn btn-secondary">Cancel</button>
-                                </div>
-                            </form>
+                        <div class="form-group">
+                            <label for="room-capacity">Capacity:</label>
+                            <input type="number" id="room-capacity" min="1" required>
                         </div>
-                        
-                        <div class="rooms-list">
-                            <table id="rooms-table">
-                                <thead>
-                                    <tr>
-                                        <th>Name</th>
-                                        <th>Location</th>
-                                        <th>Capacity</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <!-- Rooms will be populated by JavaScript -->
-                                </tbody>
-                            </table>
+                        <div class="form-group">
+                            <label for="room-color">Calendar Color:</label>
+                            <input type="color" id="room-color" value="#4CAF50">
                         </div>
-                    </div>
-                    
-                    <div class="tab-content" id="locations-tab" style="display: none;">
-                        <h4>Manage Locations</h4>
-                        <button id="add-location-btn" class="btn btn-primary">Add New Location</button>
-                        
-                        <div id="location-form" class="form-container" style="display: none;">
-                            <h5>Add/Edit Location</h5>
-                            <form id="location-form-element">
-                                <input type="hidden" id="location-id">
-                                <div class="form-group">
-                                    <label for="location-name">Location Name</label>
-                                    <input type="text" id="location-name" required>
-                                </div>
-                                <div class="form-group">
-                                    <label for="location-address">Address</label>
-                                    <textarea id="location-address" required></textarea>
-                                </div>
-                                <div class="form-group">
-                                    <label for="location-city">City</label>
-                                    <input type="text" id="location-city" required>
-                                </div>
-                                <div class="form-group">
-                                    <label for="location-country">Country</label>
-                                    <input type="text" id="location-country" required>
-                                </div>
-                                <div class="form-buttons">
-                                    <button type="submit" class="btn btn-primary">Save</button>
-                                    <button type="button" id="cancel-location-btn" class="btn btn-secondary">Cancel</button>
-                                </div>
-                            </form>
+                        <div class="form-buttons">
+                            <button type="submit">Save Room</button>
+                            <button type="button" id="delete-room" style="display: none;">Delete Room</button>
+                            <button type="button" id="cancel-room-edit">Cancel</button>
                         </div>
-                        
-                        <div class="locations-list">
-                            <table id="locations-table">
-                                <thead>
-                                    <tr>
-                                        <th>Name</th>
-                                        <th>City</th>
-                                        <th>Country</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <!-- Locations will be populated by JavaScript -->
-                                </tbody>
-                            </table>
+                        <input type="hidden" id="room-id">
+                    </form>
+                </div>
+            </div>
+            
+            <div class="tab-content" id="locations-tab" style="display: none;">
+                <h3>Manage Locations</h3>
+                <div class="admin-list" id="locations-list">
+                    <!-- Locations will be listed here -->
+                </div>
+                <div class="admin-form">
+                    <h4>Add/Edit Location</h4>
+                    <form id="location-form">
+                        <div class="form-group">
+                            <label for="location-name">Location Name:</label>
+                            <input type="text" id="location-name" required>
                         </div>
-                    </div>
+                        <div class="form-group">
+                            <label for="location-address">Address:</label>
+                            <textarea id="location-address" required></textarea>
+                        </div>
+                        <div class="form-buttons">
+                            <button type="submit">Save Location</button>
+                            <button type="button" id="delete-location" style="display: none;">Delete Location</button>
+                            <button type="button" id="cancel-location-edit">Cancel</button>
+                        </div>
+                        <input type="hidden" id="location-id">
+                    </form>
                 </div>
             </div>
         </section>
     </main>
 
-    <footer>
-        <div class="container">
-            <div class="footer-content">
-                <div class="footer-logo">
-                    <h3>1M House</h3>
-                    <p>Exclusive Members Club</p>
+    <!-- Login Modal -->
+    <div id="login-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Admin Login</h2>
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="email">Email:</label>
+                    <input type="email" id="email" required>
                 </div>
-                <div class="footer-links">
-                    <h4>Quick Links</h4>
-                    <ul>
-                        <li><a href="#">Availability</a></li>
-                        <li><a href="#">About</a></li>
-                        <li><a href="#">Membership</a></li>
-                        <li><a href="#">Contact</a></li>
-                        <li><a href="#">Terms & Conditions</a></li>
-                        <li><a href="#">Privacy Policy</a></li>
-                    </ul>
+                <div class="form-group">
+                    <label for="password">Password:</label>
+                    <input type="password" id="password" required>
                 </div>
-                <div class="footer-contact">
-                    <h4>Contact Us</h4>
-                    <p><i class="fas fa-map-marker-alt"></i> Granada, Spain</p>
-                    <p><i class="fas fa-envelope"></i> info@1mhouse.com</p>
-                    <p><i class="fas fa-phone"></i> +34 123 456 789</p>
+                <div class="form-buttons">
+                    <button type="submit">Login</button>
                 </div>
-            </div>
-            <div class="footer-bottom">
-                <p>&copy; 2025 1M House. All rights reserved.</p>
-            </div>
+            </form>
         </div>
-    </footer>
+    </div>
 
     <!-- Firebase SDK -->
     <script type="module" src="js/firebase.js"></script>

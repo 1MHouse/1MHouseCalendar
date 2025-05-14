@@ -1,84 +1,87 @@
-# 1M House - Members Club Calendar
+# 1M House - Availability Calendar
 
-A prototype website for "1M House" - a members club that gives access to a house in Granada, Spain. This application provides a calendar system to manage room bookings across different locations.
+A prototype website for "1M House", a members club that provides access to a house in Granada, Spain. This web application displays room availability and includes admin functionality to manage bookings, rooms, and locations.
 
 ## Features
 
-- Calendar view of room bookings
-- Admin access with passcode protection
-- Add, edit, and remove bookings
-- Manage rooms and locations
-- Hosted on GitHub Pages with Firebase backend
+- **Calendar View**: Shows room availability with days as columns and rooms as rows
+- **Color-Coded Bookings**: Easy visual identification of booked dates
+- **Navigation**: Buttons to navigate forward or backward in time
+- **Admin Features**:
+  - Secure login for administrators
+  - Add, edit, and remove bookings
+  - Manage rooms and their properties
+  - Manage locations
 
 ## Project Structure
 
 ```
-/
 ├── index.html         # Main page
 ├── css/               # Stylesheets
-│   └── styles.css     # Main styles
-├── js/                # JavaScript files
+│   ├── styles.css     # Main styles
+│   └── calendar.css   # Calendar-specific styles
+├── js/
 │   ├── app.js         # Main application logic
 │   ├── auth.js        # Authentication handling
-│   ├── calendar.js    # Calendar functionality
-│   └── firebase-config.js # Firebase configuration
-└── README.md          # This file
+│   ├── calendar.js    # Calendar setup and operations
+│   └── firebase.js    # Firebase configuration
+└── README.md          # Documentation
 ```
 
-## Setup Instructions
+## Setup and Deployment
 
 ### Prerequisites
 
-- GitHub account
-- Firebase account
-- Basic knowledge of HTML, CSS, and JavaScript
-
-### Firebase Setup
-
-1. Create a Firebase account at [firebase.google.com](https://firebase.google.com/)
-2. Create a new project named "1M-House" (or your preferred name)
-3. Enable Authentication with Email/Password provider
-4. Create a Realtime Database in test mode
-5. Add a web app to your Firebase project and copy the configuration
+- A Firebase account
+- Git and GitHub account
 
 ### Local Development
 
-1. Clone this repository to your local machine
-2. Update the Firebase configuration in `js/firebase-config.js` with your own credentials
-3. Set up directory structure as shown above
-4. Open `index.html` in your browser to test locally
+1. Clone the repository:
+   ```
+   git clone https://github.com/your-username/1m-house.git
+   cd 1m-house
+   ```
 
-### Deployment to GitHub Pages
+2. Open `index.html` in your browser to view the application locally.
 
-1. Create a new GitHub repository
-2. Push your code to the repository
-3. Go to repository Settings > Pages
-4. Select main branch as source and click Save
-5. Your site will be published at `https://[username].github.io/[repository-name]/`
+### Firebase Setup
 
-## User Management
+1. Create a new Firebase project at [firebase.google.com](https://firebase.google.com)
+2. Set up Firebase Authentication with Email/Password provider
+3. Create a Firestore database
+4. Replace the Firebase configuration in `js/firebase.js` with your own
 
-As this is a prototype, you'll need to manually create admin users in the Firebase Authentication console:
+### GitHub Pages Deployment
 
-1. Go to your Firebase project
-2. Navigate to Authentication > Users
-3. Click "Add User"
-4. Enter an email and password for the admin
-5. Share these credentials with authorized personnel
+1. Push the code to your GitHub repository
+2. Enable GitHub Pages for the repository
+3. Access the deployed site via the GitHub Pages URL
 
-## Customization
+## Database Structure
 
-- Update the title, logo, and branding in `index.html`
-- Modify the CSS in `styles.css` to match your preferred color scheme
-- Add additional fields to the booking form in `index.html` and `calendar.js` as needed
+The application uses Firebase Firestore with the following collections:
 
-## Future Enhancements
+- **bookings**: Stores booking information
+  - roomId: Reference to the room
+  - startDate: Check-in date
+  - endDate: Check-out date
+  - memberName: Name of the member
+  - notes: Additional booking notes
 
-- Member profiles and management
-- Payment integration
-- Email notifications for bookings
-- Mobile application
-- Advanced reporting and analytics
+- **rooms**: Stores room information
+  - name: Room name
+  - locationId: Reference to the location
+  - capacity: Number of people the room can accommodate
+  - color: Color used in the calendar for this room
+
+- **locations**: Stores location information
+  - name: Location name
+  - address: Full address of the location
+
+## Admin Access
+
+To access admin features, you need to create a user in Firebase Authentication. Once created, you can log in using the "Admin Login" button on the website.
 
 ## License
 

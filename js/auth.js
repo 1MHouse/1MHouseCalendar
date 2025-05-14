@@ -1,209 +1,151 @@
+// Authentication handling for 1M House
 import { 
-  auth, 
-  signInWithEmailAndPassword, 
-  signOut, 
-  onAuthStateChanged
+    auth, 
+    signInWithEmailAndPassword, 
+    onAuthStateChanged, 
+    signOut 
 } from './firebase.js';
 
 // DOM Elements
-const loginForm = document.getElementById('login-form');
-const adminLoginForm = document.getElementById('admin-login-form');
+const adminLoginBtn = document.getElementById('admin-login-btn');
 const adminPanel = document.getElementById('admin-panel');
-const logoutBtn = document.getElementById('logout-btn');
+const loginModal = document.getElementById('login-modal');
+const loginForm = document.getElementById('login-form');
+const closeModalBtn = document.querySelector('.close');
 
-// Admin Authentication State
-let currentUser = null;
+// Event Listeners
+adminLoginBtn.addEventListener('click', openLoginModal);
+closeModalBtn.addEventListener('click', closeLoginModal);
+loginForm.addEventListener('submit', handleLogin);
 
-// Initialize Auth State
-export function initAuth() {
-  // Listen for auth state changes
-  onAuthStateChanged(auth, (user) => {
-    if (user) {
-      // User is signed in
-      currentUser = user;
-      showAdminPanel();
-      
-      // Trigger event for other modules to respond to auth state
-      const authEvent = new CustomEvent('adminAuthStateChanged', { 
-        detail: { 
-          isAdmin: true, 
-          user: user 
-        } 
-      });
-      document.dispatchEvent(authEvent);
-    } else {
-      // User is signed out
-      currentUser = null;
-      hideAdminPanel();
-      
-      // Trigger event for other modules to respond to auth state
-      const authEvent = new CustomEvent('adminAuthStateChanged', { 
-        detail: { 
-          isAdmin: false, 
-          user: null 
-        } 
-      });
-      document.dispatchEvent(authEvent);
-    }
-  });
-  
-  // Add event listeners
-  setupEventListeners();
+// Functions
+function openLoginModal() {
+    loginModal.style.display = 'block';
 }
 
-// Set up event listeners for auth actions
-function setupEventListeners() {
-  // Login form submission
-  if (loginForm) {
-    loginForm.addEventListener('submit', handleLogin);
-  }
-  
-  // Logout button click
-  if (logoutBtn) {
-    logoutBtn.addEventListener('click', handleLogout);
-  }
-}
-
-// Handle login form submission
-async function handleLogin(event) {
-  event.preventDefault();
-  
-  const email = document.getElementById('email').value;
-  const password = document.getElementById('password').value;
-  
-  try {
-    // Start loading indicator
-    toggleLoginLoading(true);
-    
-    // Sign in with email and password
-    await signInWithEmailAndPassword(auth, email, password);
-    
-    // Clear form
+function closeLoginModal() {
+    loginModal.style.display = 'none';
     loginForm.reset();
+}
+
+async function handleLogin(e) {
+    e.preventDefault();
     
-    // Success notification
-    showNotification('Logged in successfully', 'success');
-  } catch (error) {
-    console.error('Error logging in:', error);
-    showNotification(`Login failed: ${error.message}`, 'error');
-  } finally {
-    // Stop loading indicator
-    toggleLoginLoading(false);
-  }
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    
+    try {
+        await signInWithEmailAndPassword(auth, email, password);
+        closeLoginModal();
+        showNotification('Login successful!', 'success');
+    } catch (error) {
+        console.error("Error signing in: ", error);
+        showNotification('Login failed. Please check your credentials.', 'error');
+    }
 }
 
-// Handle logout button click
-async function handleLogout() {
-  try {
-    await signOut(auth);
-    showNotification('Logged out successfully', 'success');
-  } catch (error) {
-    console.error('Error logging out:', error);
-    showNotification(`Logout failed: ${error.message}`, 'error');
-  }
+// Log out function
+export async function logout() {
+    try {
+        await signOut(auth);
+        showNotification('Logged out successfully!', 'success');
+    } catch (error) {
+        console.error("Error signing out: ", error);
+        showNotification('Logout failed.', 'error');
+    }
 }
 
-// Toggle loading state for login form
-function toggleLoginLoading(isLoading) {
-  const submitBtn = loginForm.querySelector('button[type="submit"]');
-  
-  if (isLoading) {
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging in...';
-    submitBtn.disabled = true;
-  } else {
-    submitBtn.innerHTML = 'Login';
-    submitBtn.disabled = false;
-  }
-}
+// Auth state observer
+onAuthStateChanged(auth, (user) => {
+    if (user) {
+        // User is signed in
+        adminLoginBtn.textContent = 'Logout';
+        adminLoginBtn.removeEventListener('click', openLoginModal);
+        adminLoginBtn.addEventListener('click', logout);
+        
+        // Show admin panel
+        adminPanel.style.display = 'block';
+        
+        // Dispatch event for admin state change
+        document.dispatchEvent(new CustomEvent('adminStateChanged', { detail: { isAdmin: true } }));
+    } else {
+        // User is signed out
+        adminLoginBtn.textContent = 'Admin Login';
+        adminLoginBtn.removeEventListener('click', logout);
+        adminLoginBtn.addEventListener('click', openLoginModal);
+        
+        // Hide admin panel
+        adminPanel.style.display = 'none';
+        
+        // Dispatch event for admin state change
+        document.dispatchEvent(new CustomEvent('adminStateChanged', { detail: { isAdmin: false } }));
+    }
+});
 
-// Show the admin panel, hide login form
-function showAdminPanel() {
-  if (adminLoginForm && adminPanel) {
-    adminLoginForm.style.display = 'none';
-    adminPanel.style.display = 'block';
-  }
-}
-
-// Hide the admin panel, show login form
-function hideAdminPanel() {
-  if (adminLoginForm && adminPanel) {
-    adminLoginForm.style.display = 'block';
-    adminPanel.style.display = 'none';
-  }
-}
-
-// Show notification message
+// Helper function to show notifications
 function showNotification(message, type = 'info') {
-  // Create notification element if it doesn't exist
-  let notification = document.querySelector('.notification');
-  
-  if (!notification) {
-    notification = document.createElement('div');
-    notification.className = 'notification';
-    document.body.appendChild(notification);
-  }
-  
-  // Set notification content and style
-  notification.textContent = message;
-  notification.className = `notification ${type}`;
-  
-  // Show notification
-  notification.style.display = 'block';
-  
-  // Hide notification after 3 seconds
-  setTimeout(() => {
-    notification.style.display = 'none';
-  }, 3000);
-}
-
-// Check if user is admin
-export function isAdmin() {
-  return currentUser !== null;
-}
-
-// Get current user
-export function getCurrentUser() {
-  return currentUser;
-}
-
-// Add notification CSS to document
-function addNotificationStyles() {
-  const style = document.createElement('style');
-  style.textContent = `
-    .notification {
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      padding: 15px 20px;
-      border-radius: 4px;
-      color: white;
-      font-weight: 500;
-      z-index: 1000;
-      display: none;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-      animation: slideIn 0.3s forwards;
+    // Check if notification container exists, if not create it
+    let notificationContainer = document.getElementById('notification-container');
+    
+    if (!notificationContainer) {
+        notificationContainer = document.createElement('div');
+        notificationContainer.id = 'notification-container';
+        notificationContainer.style.position = 'fixed';
+        notificationContainer.style.top = '20px';
+        notificationContainer.style.right = '20px';
+        notificationContainer.style.zIndex = '1000';
+        document.body.appendChild(notificationContainer);
     }
     
-    @keyframes slideIn {
-      from { transform: translateX(100%); }
-      to { transform: translateX(0); }
-    }
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+    notification.textContent = message;
     
-    .notification.success {
-      background-color: #48bb78;
-    }
+    // Style the notification
+    notification.style.backgroundColor = type === 'success' ? '#4CAF50' : 
+                                        type === 'error' ? '#F44336' : '#2196F3';
+    notification.style.color = 'white';
+    notification.style.padding = '15px 20px';
+    notification.style.marginBottom = '10px';
+    notification.style.borderRadius = '4px';
+    notification.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)';
+    notification.style.minWidth = '200px';
+    notification.style.opacity = '0';
+    notification.style.transition = 'opacity 0.3s ease-in-out';
     
-    .notification.error {
-      background-color: #f56565;
-    }
+    // Add close button
+    const closeBtn = document.createElement('span');
+    closeBtn.textContent = '×';
+    closeBtn.style.float = 'right';
+    closeBtn.style.cursor = 'pointer';
+    closeBtn.style.marginLeft = '10px';
+    closeBtn.style.fontWeight = 'bold';
+    closeBtn.onclick = function() {
+        notification.style.opacity = '0';
+        setTimeout(() => {
+            notificationContainer.removeChild(notification);
+        }, 300);
+    };
     
-    .notification.info {
-      background-color: #4299e1;
-    }
-  `;
-  
-  document.head.appendChild(style);
+    notification.appendChild(closeBtn);
+    notificationContainer.appendChild(notification);
+    
+    // Show notification
+    setTimeout(() => {
+        notification.style.opacity = '1';
+    }, 10);
+    
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+        notification.style.opacity = '0';
+        setTimeout(() => {
+            if (notification.parentNode === notificationContainer) {
+                notificationContainer.removeChild(notification);
+            }
+        }, 300);
+    }, 5000);
 }
 
-// Add notification styles when the module loads
-addNotificationStyles();
+// Export functions for use in other modules
+export { showNotification };
